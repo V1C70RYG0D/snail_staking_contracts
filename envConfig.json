@@ -1,0 +1,17 @@
+{
+  "deployerPrivateKey": "",
+  "etherscanApiKey": "",
+  "coinmarketcapApiKey": "",
+  "snailMainNetTokenAddress": "0x6bc40d4099f9057b23af309c08d935b890d7adc0",
+  "timeStart": 1714521600,
+  "timeEnd": 1777593600,
+  "stakingPools": [
+    { "duration": 2592000, "rewards": 160000000, "pearlMultiplier": 100 },
+    { "duration": 3888000, "rewards": 192000000, "pearlMultiplier": 120 },
+    { "duration": 7776000, "rewards": 208000000, "pearlMultiplier": 130 },
+    { "duration": 15552000, "rewards": 240000000, "pearlMultiplier": 150 },
+    { "duration": 31536000, "rewards": 320000000, "pearlMultiplier": 200 },
+    { "duration": 43200000, "rewards": 400000000, "pearlMultiplier": 250 },
+    { "duration": 56160000, "rewards": 480000000, "pearlMultiplier": 300 }
+  ]
+}
