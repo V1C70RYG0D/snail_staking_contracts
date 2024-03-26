@@ -37,6 +37,9 @@ contract PearlPointsCalculator is IPearlPointsCalculator, Ownable {
         return pearlPoints / 1e20;
     }
 
+    function getPoolMultiplier(uint8 poolId) external view returns (uint16) {
+        return poolPearlMultipliers[poolId];
+    }
 
     function getTotalPearlPointsForStaker(address staker) external view returns (uint256) {
         uint256 totalPearlPoints = 0;

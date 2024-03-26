@@ -108,6 +108,23 @@ describe("PearlPointsCalculator", function () {
     });
   });
 
+  describe("getPoolPearlMultiplier", function () {
+    const pool_0 = 0;
+    const pool_1 = 1;
+    const multiplier_0 = 200;
+    const multiplier_1 = 500;
+
+    beforeEach(async function () {
+      await pearlPointsCalculator.setPoolPearlMultiplier(pool_0, multiplier_0);
+      await pearlPointsCalculator.setPoolPearlMultiplier(pool_1, multiplier_1);
+    });
+
+    it("Should return the correct multiplier", async function () {
+      expect(await pearlPointsCalculator.getPoolMultiplier(pool_0)).to.equal(multiplier_0);
+      expect(await pearlPointsCalculator.getPoolMultiplier(pool_1)).to.equal(multiplier_1);
+    });
+  });
+
   describe("getPearlPointsForStake", function () {
     const pool_0 = 0;
     const pool_1 = 1;

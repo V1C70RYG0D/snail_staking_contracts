@@ -59,6 +59,13 @@ export async function main() {
 
   // Set the staking period
   await setStakingPeriod(stakingConfigurator, config.timeStart, config.timeEnd, deployer);
+
+  console.log("\nDeployment completed!");
+  console.log("Snail Token:", snailTokenAddress);
+  console.log("StakingConfigurator:", stakingConfiguratorAddress);
+  console.log("StakingRewardsManager:", stakingRewardsManagerAddress);
+  console.log("StakingManager:", stakingManagerAddress);
+  console.log("PearlPointsCalculator:", await pearlPointsCalculator.getAddress());
 }
 
 main().catch((error) => {

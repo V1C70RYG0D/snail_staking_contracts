@@ -161,10 +161,15 @@ contract StakingManager is IStakingManager, ReentrancyGuard {
         }
 
         uint256 poolDuration = configurator.getPoolDuration(stake.poolId);
-        if (stake.timestamp + poolDuration < block.timestamp) {
+        bool canWithdraw = stake.timestamp + poolDuration < block.timestamp;
+
+        if (canWithdraw) {
             uint256 currentIntervalTimestamp = _getCurrentIntervalTimestamp();
             uint256 lastTokens = rewardsPerSecond * (currentIntervalTimestamp - prevStakingIntervalTimestamp);
             rewardsAmount += stake.amount * lastTokens / totalDepositAmount;
+        } else {
+            uint256 lastTokens = rewardsPerSecond * (block.timestamp - prevStakingIntervalTimestamp);
+            rewardsAmount += stake.amount * rewardsPerSecond * lastTokens / totalDepositAmount;
         }
 
         // convert rewards precision back
