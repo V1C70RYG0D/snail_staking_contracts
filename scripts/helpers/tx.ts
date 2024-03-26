@@ -34,12 +34,14 @@ export async function approveAndDepositRewards(
   rewards: number,
   signer: Signer,
 ) {
+  const depositAmount = ethers.parseEther(rewards.toString());
+
   const snailContract = await ethers.getContractAt("SnailBrook", snailTokenAddress);
-  const txApprove = await snailContract.connect(signer).approve(stakingRewardsManager, rewards);
+  const txApprove = await snailContract.connect(signer).approve(stakingRewardsManager, depositAmount);
   await txApprove.wait();
   console.log("Approved rewards for poolId:", poolId);
 
-  const txDepositRewards = await stakingRewardsManager.connect(signer).depositRewards(signer, poolId, rewards);
+  const txDepositRewards = await stakingRewardsManager.connect(signer).depositRewards(signer, poolId, depositAmount);
   await txDepositRewards.wait();
   console.log("Deposited rewards for poolId:", poolId);
 }

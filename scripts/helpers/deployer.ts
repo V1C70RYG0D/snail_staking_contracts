@@ -10,7 +10,7 @@ export async function deploySnailToken(): Promise<SnailBrook> {
 }
 
 export async function deployAndVerify<T extends BaseContract>(contractName: string, args: unknown[]): Promise<T> {
-  console.log(`Deploying ${contractName}...`);
+  console.log(`\nDeploying ${contractName}...`);
   const contract = await ethers.deployContract(contractName, args);
   await contract.waitForDeployment();
   const contractAddress = await contract.getAddress();

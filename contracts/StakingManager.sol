@@ -169,7 +169,7 @@ contract StakingManager is IStakingManager, ReentrancyGuard {
             rewardsAmount += stake.amount * lastTokens / totalDepositAmount;
         } else {
             uint256 lastTokens = rewardsPerSecond * (block.timestamp - prevStakingIntervalTimestamp);
-            rewardsAmount += stake.amount * rewardsPerSecond * lastTokens / totalDepositAmount;
+            rewardsAmount += stake.amount * lastTokens / totalDepositAmount;
         }
 
         // convert rewards precision back
