@@ -110,7 +110,8 @@ describe("StakingManager", () => {
       // Simulate passing time when the staking period has ended
       const startTime = await stakingConfigurator.getStartTime();
       const endTime = await stakingConfigurator.getEndTime();
-      await time.increaseTo(Number(endTime) + poolDuration);
+      const programEndTime = Number(endTime) + poolDuration;
+      await time.increaseTo(programEndTime);
 
       const user1_rewards = await stakingManager.getRewardsForStake(user1, stakeId);
       const user2_rewards = await stakingManager.getRewardsForStake(user2, stakeId);
@@ -121,10 +122,10 @@ describe("StakingManager", () => {
       const user3_stake = await stakingManager.getUserStake(user3, stakeId);
 
       // Expect each user entered at different times
-      expect(user1_stake.timestamp).to.be.equal(startTime);
-      expect(user1_stake.timestamp).to.be.lt(user2_stake.timestamp);
-      expect(user2_stake.timestamp).to.be.lt(user3_stake.timestamp);
-      expect(user3_stake.timestamp).to.be.lt(endTime);
+      expect(user1_stake.depositTime).to.be.equal(startTime);
+      expect(user1_stake.depositTime).to.be.lt(user2_stake.depositTime);
+      expect(user2_stake.depositTime).to.be.lt(user3_stake.depositTime);
+      expect(user3_stake.depositTime).to.be.lt(endTime);
 
       const user1_rewards_formatted = Math.floor(Number(ethers.formatEther(user1_rewards)));
       const user2_rewards_formatted = Math.floor(Number(ethers.formatEther(user2_rewards)));
@@ -138,6 +139,17 @@ describe("StakingManager", () => {
       const totalRewards = user1_rewards + user2_rewards + user3_rewards;
       const expectedTotalRewards = BigInt(ethers.parseEther("1000000"));
       expect(totalRewards).to.be.closeTo(expectedTotalRewards, 1);
+
+      await time.increaseTo(programEndTime + 50_000);
+
+      // Check that rewards for withdrawn stakes are not changed
+      const user1_rewards_after = await stakingManager.getRewardsForStake(user1, stakeId);
+      const user2_rewards_after = await stakingManager.getRewardsForStake(user2, stakeId);
+      const user3_rewards_after = await stakingManager.getRewardsForStake(user3, stakeId);
+
+      expect(user1_rewards_after).to.be.equal(user1_rewards);
+      expect(user2_rewards_after).to.be.equal(user2_rewards);
+      expect(user3_rewards_after).to.be.equal(user3_rewards);
     });
   });
 
@@ -271,5 +283,72 @@ describe("StakingManager", () => {
       const poolRewards = await stakingRewardsManager.getPoolRewards(poolId);
       expect(poolRewards.totalAmount - poolRewards.claimedAmount).to.be.closeTo(BigInt(0), BigInt(100));
     }).timeout(60000);
+  });
+
+  describe("Shall return correct rewards for withdrawn stake", function () {
+    const totalRewards = 1_000_000_000;
+    const poolDuration = DAY_IN_SECONDS * 30;
+    const withdrawDelay = poolDuration;
+
+    let stakingConfigurator: StakingConfigurator;
+    let stakingRewardsManager: StakingRewardsManager;
+    let stakingManager: StakingManager;
+
+    beforeEach(async () => {
+      const setupTime = (await time.latest()) + 100;
+      const pools = [
+        {
+          poolId: 0,
+          amount: ethers.parseEther(String(totalRewards)),
+          duration: poolDuration,
+        },
+      ];
+
+      stakingConfigurator = await stakingConfiguratorDeployer({
+        startTime: setupTime,
+        endTime: setupTime + DAY_IN_SECONDS * 365 * 2,
+        pools: pools.map(({ duration }) => ({ duration })),
+      });
+
+      stakingRewardsManager = await stakingRewardsManagerDeployer(token, stakingConfigurator, {
+        admin: owner,
+        rewards: pools,
+      });
+
+      stakingManager = await stakingManagerDeployer(token, stakingConfigurator, stakingRewardsManager, {
+        actions: [
+          {
+            poolId: 0,
+            operation: StakingOperation.Deposit,
+            amount: ethers.parseEther("10000"),
+            user: owner,
+            timeDelay: 100,
+          },
+          {
+            stakeId: 0,
+            operation: StakingOperation.Withdraw,
+            user: owner,
+            timeDelay: withdrawDelay,
+          },
+        ],
+      });
+    });
+
+    it("should return correct rewards for withdrawn stake", async function () {
+      const startTime = await stakingConfigurator.getStartTime();
+      const endTime = await stakingConfigurator.getEndTime();
+      const rewardsPerSecond = BigInt(ethers.parseEther(String(totalRewards))) / (endTime - startTime);
+
+      const stake = await stakingManager.getUserStake(owner, 0);
+      const expectedRewards = (stake.withdrawTime - stake.depositTime) * rewardsPerSecond;
+      const rewards = await stakingManager.getRewardsForStake(owner, 0);
+
+      expect(BigInt.asIntN(256, rewards)).to.be.closeTo(expectedRewards, 10 ** 6);
+
+      await time.increaseTo(Number(endTime) + poolDuration);
+
+      const rewards_after = await stakingManager.getRewardsForStake(owner, 0);
+      expect(rewards_after).to.be.equal(rewards);
+    });
   });
 });

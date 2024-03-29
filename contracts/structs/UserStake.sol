@@ -5,7 +5,8 @@ enum StakingStatus {Deposited, Withdrawn}
 
 struct UserStake {
     uint256 amount;
-    uint256 timestamp;
     uint8 poolId;
     StakingStatus status;
+    uint256 depositTime;
+    uint256 withdrawTime;
 }

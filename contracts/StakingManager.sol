@@ -45,7 +45,7 @@ contract StakingManager is IStakingManager, ReentrancyGuard {
             poolStakingIntervals[poolId][poolStakingIntervals[poolId].length - 1] = latestStakingIntervals;
         }
 
-        userStakes[msg.sender].push(UserStake(amount, currentIntervalTimestamp, poolId, StakingStatus.Deposited));
+        userStakes[msg.sender].push(UserStake(amount, poolId, StakingStatus.Deposited, currentIntervalTimestamp, 0));
         token.safeTransferFrom(msg.sender, address(this), amount);
 
         emit Deposited(msg.sender, poolId, userStakes[msg.sender].length - 1, amount);
@@ -53,13 +53,13 @@ contract StakingManager is IStakingManager, ReentrancyGuard {
 
     function withdraw(uint256 stakeId) public nonReentrant {
         require(stakeId < userStakes[msg.sender].length, "Stake does not exist");
-        UserStake storage stake = userStakes[msg.sender][stakeId];
 
+        UserStake storage stake = userStakes[msg.sender][stakeId];
         require(stake.status != StakingStatus.Withdrawn, "Stake is already withdrawn");
 
         uint256 currentIntervalTimestamp = _getCurrentIntervalTimestamp();
         uint256 poolDuration = configurator.getPoolDuration(stake.poolId);
-        require(currentIntervalTimestamp > stake.timestamp + poolDuration, "Withdraw not yet available");
+        require(block.timestamp > stake.depositTime + poolDuration, "Withdraw not yet available");
 
         uint256 rewardsAmount = getRewardsForStake(msg.sender, stakeId);
 
@@ -75,6 +75,7 @@ contract StakingManager is IStakingManager, ReentrancyGuard {
         token.safeTransfer(msg.sender, stake.amount);
 
         stake.status = StakingStatus.Withdrawn;
+        stake.withdrawTime = currentIntervalTimestamp;
 
         emit Withdrawn(msg.sender, stakeId, stake.amount, rewardsAmount);
     }
@@ -149,7 +150,7 @@ contract StakingManager is IStakingManager, ReentrancyGuard {
         for (uint256 i = 0; i < poolIntervals.length; i++) {
             StakingInterval memory stakeInterval = poolIntervals[i];
 
-            if (stakeInterval.timestamp > stake.timestamp) {
+            if (totalDepositAmount > 0 && stakeInterval.timestamp > stake.depositTime) {
                 uint256 totalForInterval = rewardsPerSecond * (stakeInterval.timestamp - prevStakingIntervalTimestamp);
                 rewardsAmount += stake.amount * totalForInterval / totalDepositAmount;
             }
@@ -158,16 +159,24 @@ contract StakingManager is IStakingManager, ReentrancyGuard {
             totalDepositAmount -= stakeInterval.withdrawalAmount;
 
             prevStakingIntervalTimestamp = stakeInterval.timestamp;
+
+            if (stake.status == StakingStatus.Withdrawn && stakeInterval.timestamp >= stake.withdrawTime) {
+                break;
+            }
+        }
+
+        if (stake.status == StakingStatus.Withdrawn) {
+            return rewardsAmount / 1e18;
         }
 
         uint256 poolDuration = configurator.getPoolDuration(stake.poolId);
-        bool canWithdraw = stake.timestamp + poolDuration < block.timestamp;
+        bool canWithdraw = stake.depositTime + poolDuration < block.timestamp;
 
         if (canWithdraw) {
             uint256 currentIntervalTimestamp = _getCurrentIntervalTimestamp();
             uint256 lastTokens = rewardsPerSecond * (currentIntervalTimestamp - prevStakingIntervalTimestamp);
             rewardsAmount += stake.amount * lastTokens / totalDepositAmount;
-        } else {
+        } else if (totalDepositAmount > 0) {
             uint256 lastTokens = rewardsPerSecond * (block.timestamp - prevStakingIntervalTimestamp);
             rewardsAmount += stake.amount * lastTokens / totalDepositAmount;
         }
